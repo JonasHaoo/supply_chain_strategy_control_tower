@@ -1,0 +1,1761 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Crocs Supply Chain Strategy Control Tower</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <style>
+    /* Crocs colors on a Rakuten_v2.0–style glass dashboard (dark default + paper light) */
+    :root {
+      --crocs-green: #84BD00;
+      --crocs-lime: #84BD00;
+      --crocs-lime-bright: #9fe020;
+      --crocs-blue: #006DA4;
+      --crocs-blue-glow: #2bb0e6;
+      --positive: #22C55E;
+      --warning: #F59E0B;
+      --critical: #F87171;
+      --font: "Inter", system-ui, -apple-system, sans-serif;
+    }
+    [data-theme="dark"] {
+      --page-bg: #0a1a14;
+      --page-gradient: linear-gradient(135deg, #0f2918 0%, #063d52 38%, #143d24 72%, #0d2834 100%);
+      --text: rgba(255, 255, 255, 0.96);
+      --text-muted: rgba(255, 255, 255, 0.78);
+      --dark-gray: rgba(255, 255, 255, 0.96);
+      --surface: rgba(132, 189, 0, 0.1);
+      --card-bg: rgba(132, 189, 0, 0.16);
+      --hairline: rgba(132, 189, 0, 0.38);
+      --white: #ffffff;
+      --shadow: 0 8px 32px rgba(0, 0, 0, 0.35);
+      --shadow-hover: 0 12px 40px rgba(0, 0, 0, 0.45);
+      color-scheme: dark;
+    }
+    [data-theme="light"] {
+      --page-bg: #eef4ef;
+      --page-gradient: linear-gradient(180deg, #f5faf6 0%, #e8f0ea 100%);
+      --text: #142018;
+      --text-muted: #4a5c52;
+      --dark-gray: #142018;
+      --surface: #dce8df;
+      --card-bg: rgba(255, 255, 255, 0.94);
+      --hairline: rgba(0, 109, 164, 0.18);
+      --white: #ffffff;
+      --shadow: 0 4px 24px rgba(10, 40, 30, 0.08);
+      --shadow-hover: 0 8px 28px rgba(10, 40, 30, 0.12);
+      color-scheme: light;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; }
+    .skip-link {
+      position: absolute;
+      left: -9999px;
+      z-index: 9999;
+      padding: 0.5rem 1rem;
+      background: var(--crocs-lime);
+      color: #0f1a0c;
+      font-weight: 600;
+      border-radius: 4px;
+      text-decoration: none;
+    }
+    .skip-link:focus { left: 0.75rem; top: 0.75rem; outline: 2px solid var(--crocs-blue-glow); outline-offset: 2px; }
+    html { font-size: 15px; }
+    body {
+      margin: 0;
+      font-family: var(--font);
+      color: var(--text);
+      background: var(--page-bg);
+      background-image: var(--page-gradient);
+      background-attachment: fixed;
+      min-height: 100vh;
+      line-height: 1.5;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    .tabular { font-variant-numeric: tabular-nums; }
+
+    .filter-summary {
+      margin: 0 0 1rem;
+      padding: 0.65rem 1rem;
+      border-radius: 8px;
+      font-size: 0.82rem;
+      color: var(--text-muted);
+      background: var(--card-bg);
+      border: 1px solid var(--hairline);
+    }
+    .filter-summary strong { color: var(--crocs-lime-bright); font-weight: 600; }
+    [data-theme="light"] .filter-summary strong { color: var(--crocs-green); }
+
+    .chart-render-error {
+      display: none;
+      margin: 0 0 1rem;
+      padding: 0.65rem 1rem;
+      border-radius: 8px;
+      font-size: 0.82rem;
+      color: var(--critical);
+      background: color-mix(in srgb, var(--critical) 12%, var(--card-bg));
+      border: 1px solid color-mix(in srgb, var(--critical) 35%, transparent);
+    }
+    .chart-render-error:not([hidden]) { display: block; }
+    .chart-render-error code { font-size: 0.78em; word-break: break-all; }
+
+    /* ----- Header (Rakuten-style strip) ----- */
+    .header {
+      background: var(--card-bg);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--hairline);
+      padding: 1rem 1.25rem;
+      position: sticky;
+      top: 0;
+      z-index: 50;
+      box-shadow: var(--shadow);
+    }
+    .header-inner {
+      max-width: 1680px;
+      margin: 0 auto;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 1rem 1.5rem;
+    }
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      min-width: 0;
+      flex: 1 1 200px;
+    }
+    .brand-mark {
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      background: var(--white);
+      border-radius: 6px;
+      padding: 0.2rem 0.55rem;
+      line-height: 0;
+      box-shadow: 0 0 0 1px var(--hairline);
+    }
+    [data-theme="dark"] .brand-mark {
+      background: #ffffff;
+      box-shadow: 0 0 0 1px rgba(255,255,255,0.18);
+    }
+    .brand-logo {
+      height: 34px;
+      width: auto;
+      max-width: 140px;
+      object-fit: contain;
+      display: block;
+    }
+    .brand h1 {
+      margin: 0;
+      font-size: clamp(1rem, 2vw, 1.15rem);
+      font-weight: 700;
+      color: var(--text);
+      letter-spacing: -0.02em;
+    }
+    .brand-sub {
+      display: block;
+      font-size: 0.7rem;
+      font-weight: 600;
+      color: var(--crocs-lime-bright);
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      margin-top: 0.15rem;
+    }
+
+    .header-controls {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 0.5rem 0.75rem;
+    }
+    .control {
+      display: flex;
+      flex-direction: column;
+      gap: 0.2rem;
+    }
+    .control label {
+      font-size: 0.65rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--text-muted);
+    }
+    .control select {
+      font-family: inherit;
+      font-size: 0.8rem;
+      padding: 0.45rem 0.65rem;
+      border: 1px solid var(--hairline);
+      border-radius: 4px;
+      background: var(--card-bg);
+      color: var(--text);
+      min-width: 130px;
+      cursor: pointer;
+    }
+    .control select:focus {
+      outline: 2px solid var(--crocs-lime);
+      outline-offset: 1px;
+    }
+    [data-theme="dark"] .control select {
+      background: rgba(0, 0, 0, 0.25);
+      color: var(--text);
+      border-color: var(--hairline);
+    }
+
+    .btn {
+      font-family: inherit;
+      font-size: 0.8rem;
+      font-weight: 600;
+      padding: 0.5rem 1rem;
+      border-radius: 4px;
+      border: 1px solid var(--hairline);
+      background: var(--card-bg);
+      color: var(--text);
+      cursor: pointer;
+      transition: background 0.15s, border-color 0.15s, box-shadow 0.15s;
+    }
+    .btn:hover { box-shadow: var(--shadow-hover); border-color: var(--crocs-lime); }
+    .btn:focus-visible { outline: 2px solid var(--crocs-blue-glow); outline-offset: 2px; }
+    .btn-primary {
+      background: var(--crocs-lime);
+      border-color: var(--crocs-lime-bright);
+      color: #0f1a0c;
+      font-weight: 600;
+    }
+    .btn-primary:hover { filter: brightness(0.97); }
+
+    /* ----- App shell (sidebar + main, Eastern-style) ----- */
+    .app-layout {
+      display: flex;
+      min-height: calc(100vh - 0px);
+      position: relative;
+    }
+    .nav-sidebar {
+      width: 220px;
+      flex-shrink: 0;
+      background: var(--card-bg);
+      border-right: 1px solid var(--hairline);
+      position: fixed;
+      top: 0;
+      left: 0;
+      bottom: 0;
+      z-index: 200;
+      overflow-y: auto;
+      padding: 1rem 0.75rem 1.25rem;
+      -webkit-overflow-scrolling: touch;
+    }
+    [data-theme="dark"] .nav-sidebar {
+      background: rgba(10, 30, 22, 0.92);
+      backdrop-filter: blur(10px);
+    }
+    .nav-sidebar-brand {
+      padding: 0.35rem 0.5rem 0.85rem;
+      margin-bottom: 0.75rem;
+      border-bottom: 1px solid var(--hairline);
+    }
+    .nav-sidebar-brand strong {
+      display: block;
+      font-size: 0.8rem;
+      font-weight: 700;
+      color: var(--text);
+      letter-spacing: -0.02em;
+    }
+    .nav-sidebar-brand span {
+      font-size: 0.65rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--crocs-lime-bright);
+    }
+    [data-theme="light"] .nav-sidebar-brand span { color: var(--crocs-green); }
+    .nav-section {
+      font-size: 0.62rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--text-muted);
+      margin: 1rem 0.5rem 0.4rem;
+    }
+    .nav-section:first-of-type { margin-top: 0; }
+    .nav-rail-link {
+      display: block;
+      padding: 0.5rem 0.65rem;
+      margin-bottom: 0.2rem;
+      border-radius: 6px;
+      font-size: 0.78rem;
+      font-weight: 500;
+      color: var(--text-muted);
+      text-decoration: none;
+      line-height: 1.35;
+      border: 1px solid transparent;
+      transition: background 0.15s, color 0.15s, border-color 0.15s;
+    }
+    .nav-rail-link:hover {
+      background: color-mix(in srgb, var(--crocs-lime) 12%, transparent);
+      color: var(--text);
+    }
+    .nav-rail-link:focus-visible {
+      outline: 2px solid var(--crocs-blue-glow);
+      outline-offset: 2px;
+    }
+    .nav-rail-link.active {
+      background: color-mix(in srgb, var(--crocs-lime) 22%, transparent);
+      color: var(--text);
+      border-color: color-mix(in srgb, var(--crocs-lime) 45%, transparent);
+      font-weight: 600;
+    }
+    .nav-backdrop {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.45);
+      z-index: 199;
+    }
+    .nav-backdrop.visible { display: block; }
+    .nav-hamburger {
+      display: none;
+      align-items: center;
+      justify-content: center;
+      width: 44px;
+      height: 44px;
+      margin-right: 0.5rem;
+      padding: 0;
+      border: 1px solid var(--hairline);
+      border-radius: 6px;
+      background: var(--card-bg);
+      color: var(--text);
+      cursor: pointer;
+      flex-shrink: 0;
+    }
+    .nav-hamburger:focus-visible { outline: 2px solid var(--crocs-blue-glow); outline-offset: 2px; }
+    .nav-hamburger svg { width: 22px; height: 22px; }
+    .main-wrap {
+      flex: 1;
+      margin-left: 220px;
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+    }
+    #sec-kpis, #sec-alerts,
+    #sec-a, #sec-b, #sec-c, #sec-d, #sec-e, #sec-risk {
+      scroll-margin-top: 5.5rem;
+    }
+    @media (max-width: 767px) {
+      .nav-hamburger { display: inline-flex; }
+      .nav-sidebar {
+        transform: translateX(-100%);
+        transition: transform 0.2s ease;
+        box-shadow: 8px 0 24px rgba(0, 0, 0, 0.25);
+      }
+      .nav-sidebar.open { transform: translateX(0); }
+      .main-wrap { margin-left: 0; }
+    }
+
+    /* ----- Layout ----- */
+    .shell {
+      max-width: 1680px;
+      margin: 0 auto;
+      padding: 1.25rem;
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 1.25rem;
+    }
+    .shell-main {
+      min-width: 0;
+    }
+
+    /* ----- KPI ----- */
+    .kpi-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 0.75rem;
+    }
+    @media (min-width: 768px) {
+      .kpi-grid { grid-template-columns: repeat(3, 1fr); }
+    }
+    @media (min-width: 1100px) {
+      .kpi-grid { grid-template-columns: repeat(6, 1fr); }
+    }
+    .kpi-card {
+      background: var(--card-bg);
+      border: 1px solid var(--hairline);
+      border-radius: 10px;
+      padding: 1rem;
+      box-shadow: var(--shadow);
+      transition: box-shadow 0.2s, border-color 0.2s;
+    }
+    [data-theme="dark"] .kpi-card {
+      border-color: rgba(132, 189, 0, 0.45);
+    }
+    .kpi-card:hover { box-shadow: var(--shadow-hover); }
+    .kpi-label {
+      font-size: 0.7rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      color: var(--text-muted);
+      margin-bottom: 0.35rem;
+    }
+    .kpi-value {
+      font-size: 1.35rem;
+      font-weight: 700;
+      color: var(--dark-gray);
+      letter-spacing: -0.02em;
+    }
+    [data-theme="dark"] .kpi-value { color: var(--text); }
+    .kpi-delta {
+      font-size: 0.75rem;
+      margin-top: 0.35rem;
+      font-weight: 600;
+    }
+    .kpi-delta.up { color: var(--positive); }
+    .kpi-delta.down { color: var(--critical); }
+    .kpi-delta.neutral { color: var(--text-muted); }
+
+    /* ----- Alerts ----- */
+    .section-title {
+      font-size: 0.75rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--crocs-lime-bright);
+      margin: 0 0 0.75rem;
+    }
+    [data-theme="light"] .section-title { color: var(--crocs-green); }
+    .alerts {
+      display: grid;
+      gap: 0.65rem;
+    }
+    @media (min-width: 768px) {
+      .alerts { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    }
+    .alert-card {
+      background: var(--card-bg);
+      border: 1px solid var(--hairline);
+      border-radius: 6px;
+      padding: 0.85rem 1rem;
+      display: flex;
+      gap: 0.85rem;
+      align-items: flex-start;
+      box-shadow: var(--shadow);
+    }
+    .alert-dot {
+      flex-shrink: 0;
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      margin-top: 0.12rem;
+      box-shadow: 0 0 12px var(--alert-dot-glow, transparent);
+    }
+    .alert-card.critical .alert-dot {
+      background: #dc2626;
+      --alert-dot-glow: rgba(220, 38, 38, 0.75);
+    }
+    .alert-card.warning .alert-dot {
+      background: #ca8a04;
+      --alert-dot-glow: rgba(202, 138, 4, 0.7);
+    }
+    .alert-card.positive .alert-dot {
+      background: #16a34a;
+      --alert-dot-glow: rgba(22, 163, 74, 0.7);
+    }
+    .alert-card-col {
+      flex: 1;
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 0.35rem;
+    }
+    .alert-status {
+      font-size: 0.65rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      white-space: nowrap;
+    }
+    .alert-status.critical { color: var(--critical); }
+    .alert-status.warning { color: var(--warning); }
+    .alert-status.positive { color: var(--positive); }
+    .alert-body { font-size: 0.85rem; line-height: 1.4; }
+
+    /* ----- Charts ----- */
+    .chart-card {
+      background: var(--card-bg);
+      border: 1px solid var(--hairline);
+      border-radius: 10px;
+      padding: 1.1rem 1.1rem 0.85rem;
+      margin-bottom: 1rem;
+      box-shadow: var(--shadow);
+    }
+    [data-theme="dark"] .chart-card {
+      border-color: rgba(132, 189, 0, 0.35);
+    }
+    .chart-card h3 {
+      margin: 0 0 0.25rem;
+      font-size: 0.95rem;
+      font-weight: 600;
+      color: var(--text);
+    }
+    .chart-takeaway {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      margin: 0 0 0.75rem;
+      line-height: 1.4;
+      font-style: italic;
+    }
+    .chart-wrap {
+      position: relative;
+      height: 340px;
+      width: 100%;
+      margin-bottom: 0.5rem;
+    }
+    .chart-wrap canvas {
+      display: block;
+      width: 100% !important;
+      height: 100% !important;
+    }
+    .chart-fail {
+      display: none;
+      position: absolute;
+      inset: 0;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      padding: 1rem;
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      background: color-mix(in srgb, var(--card-bg) 92%, transparent);
+      border-radius: 6px;
+      border: 1px dashed var(--hairline);
+      line-height: 1.45;
+    }
+    .chart-wrap.chart-library-missing .chart-fail { display: flex; flex-direction: column; gap: 0.35rem; }
+    .chart-wrap.chart-library-missing canvas { visibility: hidden; pointer-events: none; }
+    .chart-wrap.tall { height: 380px; }
+    .chart-wrap.short { height: 280px; }
+    .chart-grid-2 {
+      display: grid;
+      gap: 1rem;
+    }
+    @media (min-width: 900px) {
+      .chart-grid-2 { grid-template-columns: 1fr 1fr; }
+    }
+
+    .section-block {
+      margin-bottom: 1.5rem;
+    }
+    .section-block > .section-title { margin-bottom: 0.85rem; }
+
+    /* Heatmap */
+    .heatmap {
+      overflow-x: auto;
+      margin-bottom: 0.5rem;
+    }
+    .heatmap table {
+      border-collapse: collapse;
+      font-size: 0.75rem;
+      width: 100%;
+      min-width: 420px;
+    }
+    .heatmap th, .heatmap td {
+      padding: 0.45rem 0.5rem;
+      text-align: center;
+      border: 1px solid var(--hairline);
+    }
+    .heatmap th {
+      background: var(--surface);
+      font-weight: 600;
+    }
+    .heatmap .row-label {
+      text-align: left;
+      font-weight: 600;
+      background: var(--surface);
+    }
+    .hm-low { background: #E3F0CC; color: #1a1a1a; }
+    .hm-mid { background: #F5E6C8; color: #1a1a1a; }
+    .hm-high { background: #F5D4D2; color: #1a1a1a; }
+    [data-theme="dark"] .hm-low { background: #2d3a24; color: #e8eaed; }
+    [data-theme="dark"] .hm-mid { background: #3d3520; color: #e8eaed; }
+    [data-theme="dark"] .hm-high { background: #3d2826; color: #e8eaed; }
+
+    /* Risk table */
+    .table-wrap {
+      overflow-x: auto;
+      background: var(--card-bg);
+      border: 1px solid var(--hairline);
+      border-radius: 6px;
+      box-shadow: var(--shadow);
+    }
+    table.risk {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.8rem;
+    }
+    table.risk th {
+      text-align: left;
+      padding: 0.65rem 0.85rem;
+      background: var(--surface);
+      font-weight: 600;
+      font-size: 0.7rem;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      color: var(--text-muted);
+      border-bottom: 1px solid var(--hairline);
+    }
+    table.risk td {
+      padding: 0.65rem 0.85rem;
+      border-bottom: 1px solid var(--hairline);
+      vertical-align: top;
+    }
+    table.risk tr:hover td { background: color-mix(in srgb, var(--crocs-green) 6%, transparent); }
+    .badge {
+      display: inline-block;
+      font-size: 0.65rem;
+      font-weight: 700;
+      padding: 0.2rem 0.45rem;
+      border-radius: 3px;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+    .badge-p1 { background: color-mix(in srgb, var(--critical) 18%, transparent); color: var(--critical); }
+    .badge-p2 { background: color-mix(in srgb, var(--warning) 20%, transparent); color: #8a5a00; }
+    .badge-p3 { background: color-mix(in srgb, var(--crocs-blue) 15%, transparent); color: var(--crocs-blue); }
+
+    .footer-note {
+      font-size: 0.7rem;
+      color: var(--text-muted);
+      margin-top: 1.5rem;
+      padding: 0.75rem;
+      border-top: 1px dashed var(--hairline);
+      max-width: 1680px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+  </style>
+</head>
+<body data-theme="dark">
+  <script>
+  (function () {
+    try {
+      var saved = localStorage.getItem("crocs-control-tower-theme");
+      var prefersDark = typeof matchMedia !== "undefined" && matchMedia("(prefers-color-scheme: dark)").matches;
+      var dark = saved === "dark" || (saved !== "light" && prefersDark);
+      if (saved === "light") dark = false;
+      document.documentElement.setAttribute("data-theme", dark ? "dark" : "light");
+      document.body.setAttribute("data-theme", dark ? "dark" : "light");
+      document.documentElement.style.colorScheme = dark ? "dark" : "light";
+    } catch (e) {}
+  })();
+  </script>
+  <a class="skip-link" href="#main-dashboard">Skip to main content</a>
+  <div class="app-layout">
+    <aside class="nav-sidebar" id="navSidebar" aria-label="Section navigation">
+      <div class="nav-sidebar-brand">
+        <strong>Crocs supply chain</strong>
+        <span>Jump to section</span>
+      </div>
+      <div class="nav-section">Overview</div>
+      <a href="#sec-kpis" class="nav-rail-link" data-nav-target="sec-kpis">Strategic KPIs</a>
+      <a href="#sec-alerts" class="nav-rail-link" data-nav-target="sec-alerts">Strategy alerts</a>
+      <div class="nav-section">Pillars A–E</div>
+      <a href="#sec-a" class="nav-rail-link" data-nav-target="sec-a">A · Customer experience</a>
+      <a href="#sec-b" class="nav-rail-link" data-nav-target="sec-b">B · Cost-to-serve</a>
+      <a href="#sec-c" class="nav-rail-link" data-nav-target="sec-c">C · Speed &amp; flow</a>
+      <a href="#sec-d" class="nav-rail-link" data-nav-target="sec-d">D · Inventory health</a>
+      <a href="#sec-e" class="nav-rail-link" data-nav-target="sec-e">E · Sustainability</a>
+      <div class="nav-section">More</div>
+      <a href="#sec-risk" class="nav-rail-link" data-nav-target="sec-risk">Risk &amp; actions</a>
+    </aside>
+    <div class="nav-backdrop" id="navBackdrop" aria-hidden="true"></div>
+    <div class="main-wrap">
+  <header class="header">
+    <div class="header-inner">
+      <button type="button" class="nav-hamburger" id="navHamburger" aria-label="Open section navigation" aria-expanded="false">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
+      </button>
+      <div class="brand">
+        <div class="brand-mark">
+          <img class="brand-logo" src="assets/crocs-logo.png" alt="Crocs" width="160" height="48" decoding="async" />
+        </div>
+        <div>
+          <h1>Crocs Supply Chain Strategy Control Tower</h1>
+          <span class="brand-sub">Global Supply Chain Strategy · Executive view</span>
+        </div>
+      </div>
+      <div class="header-controls">
+        <div class="control">
+          <label for="rangeSel">Date range</label>
+          <select id="rangeSel" aria-label="Date range">
+            <option value="12m" selected>Last 12 months</option>
+            <option value="6m">Last 6 months</option>
+            <option value="ytd">Year to date</option>
+          </select>
+        </div>
+        <div class="control">
+          <label for="regionSel">Region</label>
+          <select id="regionSel" aria-label="Region filter">
+            <option value="all" selected>All regions</option>
+            <option value="na">North America</option>
+            <option value="emea">EMEA</option>
+            <option value="apac">APAC</option>
+          </select>
+        </div>
+        <div class="control">
+          <label for="channelSel">Channel</label>
+          <select id="channelSel" aria-label="Channel filter">
+            <option value="all" selected>All channels</option>
+            <option value="dtc">DTC</option>
+            <option value="wholesale">Wholesale</option>
+          </select>
+        </div>
+        <button type="button" class="btn" id="themeBtn" aria-label="Toggle color theme">Dark mode</button>
+      </div>
+    </div>
+  </header>
+
+  <div class="shell">
+    <p class="chart-render-error" id="chartErrorBanner" role="alert" hidden></p>
+    <p class="filter-summary" id="filterSummary" aria-live="polite"></p>
+    <!-- KPI row — values wired from MOCK; replace with ERP/OMS aggregates -->
+    <section id="sec-kpis" aria-label="Key performance indicators">
+      <h2 class="section-title">Strategic KPIs</h2>
+      <div class="kpi-grid" id="kpiRow">
+        <article class="kpi-card"><div class="kpi-label">OTIF %</div><div class="kpi-value tabular" id="kpi-otif">94.2%</div><div class="kpi-delta up" id="kpi-otif-d">+1.1 pts vs LY</div></article>
+        <article class="kpi-card"><div class="kpi-label">Perfect order rate %</div><div class="kpi-value tabular" id="kpi-perfect">91.8%</div><div class="kpi-delta up" id="kpi-perfect-d">+0.6 pts vs LY</div></article>
+        <article class="kpi-card"><div class="kpi-label">Cost-to-serve / pair</div><div class="kpi-value tabular" id="kpi-cts">$8.45</div><div class="kpi-delta up" id="kpi-cts-d">−$0.32 vs LY</div></article>
+        <article class="kpi-card"><div class="kpi-label">Inventory turns</div><div class="kpi-value tabular" id="kpi-turns">5.2×</div><div class="kpi-delta up" id="kpi-turns-d">+0.2× vs LY</div></article>
+        <article class="kpi-card"><div class="kpi-label">Concept-to-delivery (days)</div><div class="kpi-value tabular" id="kpi-ctd">118 d</div><div class="kpi-delta up" id="kpi-ctd-d">−4 d vs LY</div></article>
+        <article class="kpi-card"><div class="kpi-label">CO₂ per pair (kg)</div><div class="kpi-value tabular" id="kpi-co2">2.31 kg</div><div class="kpi-delta down" id="kpi-co2-d">+0.08 kg vs LY</div></article>
+      </div>
+    </section>
+
+    <section id="sec-alerts" aria-label="Strategy alerts">
+      <h2 class="section-title">Strategy alerts</h2>
+      <div class="alerts" id="alertRow">
+        <div class="alert-card warning">
+          <span class="alert-dot" aria-hidden="true"></span>
+          <div class="alert-card-col">
+            <span class="alert-status warning">Warning</span>
+            <div class="alert-body">North America DTC cost-to-serve increased 12% QoQ — review outbound parcel mix and returns handling.</div>
+          </div>
+        </div>
+        <div class="alert-card positive">
+          <span class="alert-dot" aria-hidden="true"></span>
+          <div class="alert-card-col">
+            <span class="alert-status positive">Positive</span>
+            <div class="alert-body">APAC supplier lead time improved 8 days vs prior quarter on top two footwear programs.</div>
+          </div>
+        </div>
+        <div class="alert-card critical">
+          <span class="alert-dot" aria-hidden="true"></span>
+          <div class="alert-card-col">
+            <span class="alert-status critical">Critical</span>
+            <div class="alert-body">Expedited freight up 18% YoY: OTIF gains of +1.4 pts but emissions per pair worsening.</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <div class="shell-main">
+      <div class="shell-charts">
+        <!-- A. Customer Experience -->
+        <div class="section-block" id="sec-a">
+          <h2 class="section-title">A · Customer experience</h2>
+          <div class="chart-grid-2">
+            <div class="chart-card">
+              <h3>OTIF trend (global)</h3>
+              <p class="chart-takeaway" id="takeawayOtif">OTIF is trending up late in the year; rising expedited freight is part of the service uplift — watch cost and emissions.</p>
+              <div class="chart-wrap"><canvas id="chartOtif" aria-label="OTIF trend chart"></canvas></div>
+            </div>
+            <div class="chart-card">
+              <h3>Fill rate by region &amp; channel</h3>
+              <p class="chart-takeaway" id="takeawayFill">DTC consistently outperforms wholesale on fill — prioritize allocation rules where wholesale constraints bind.</p>
+              <div class="chart-wrap tall"><canvas id="chartFill" aria-label="Fill rate chart"></canvas></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- B. Cost-to-Serve -->
+        <div class="section-block" id="sec-b">
+          <h2 class="section-title">B · Cost-to-serve</h2>
+          <div class="chart-grid-2">
+            <div class="chart-card">
+              <h3>Cost stack (USD / pair) — waterfall view</h3>
+              <p class="chart-takeaway" id="takeawayWaterfall">Outbound freight and manufacturing dominate — small improvements in returns and duties still move total CTS meaningfully.</p>
+              <div class="chart-wrap"><canvas id="chartWaterfall" aria-label="Cost stack chart"></canvas></div>
+            </div>
+            <div class="chart-card">
+              <h3>DTC vs wholesale cost-to-serve by region</h3>
+              <p class="chart-takeaway" id="takeawayCtsRegion">HeyDude DTC in North America has the highest cost-to-serve variance — align promo calendar with inventory positioning.</p>
+              <div class="chart-wrap"><canvas id="chartCtsRegion" aria-label="CTS by region chart"></canvas></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- C. Speed -->
+        <div class="section-block" id="sec-c">
+          <h2 class="section-title">C · Speed &amp; flow</h2>
+          <div class="chart-grid-2">
+            <div class="chart-card">
+              <h3>Concept-to-delivery timeline (days)</h3>
+              <p class="chart-takeaway" id="takeawayFunnel">Production and sourcing consume the majority of concept-to-delivery days — joint planning with suppliers can compress the middle.</p>
+              <div class="chart-wrap short"><canvas id="chartFunnel" aria-label="Timeline chart"></canvas></div>
+            </div>
+            <div class="chart-card">
+              <h3>Supplier lead time by sourcing country</h3>
+              <p class="chart-takeaway" id="takeawayLead">Mexico shortest cycle; Indonesia improving — diversify APAC exposure for resilience.</p>
+              <div class="chart-wrap"><canvas id="chartLead" aria-label="Lead time chart"></canvas></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- D. Inventory -->
+        <div class="section-block" id="sec-d">
+          <h2 class="section-title">D · Inventory health</h2>
+          <div class="chart-grid-2">
+            <div class="chart-card">
+              <h3>Stockout risk heatmap (index 0–100)</h3>
+              <p class="chart-takeaway" id="takeawayHeat">Jibbitz and HeyDude show elevated stockout risk in APAC — align marketing pushes with inbound plans.</p>
+              <div class="heatmap" id="heatmapEl">
+                <table><thead id="heatmapHead"><tr><th></th><th>North America</th><th>EMEA</th><th>APAC</th></tr></thead><tbody id="heatmapBody"></tbody></table>
+              </div>
+            </div>
+            <div class="chart-card">
+              <h3>Weeks of supply vs sell-through</h3>
+              <p class="chart-takeaway" id="takeawayScatter">High sell-through with low WOS is sustainable only with frequent replenishment — watch air-freight dependency.</p>
+              <div class="chart-wrap"><canvas id="chartScatter" aria-label="Scatter chart"></canvas></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- E. Sustainability -->
+        <div class="section-block" id="sec-e">
+          <h2 class="section-title">E · Sustainability trade-offs</h2>
+          <div class="chart-grid-2">
+            <div class="chart-card">
+              <h3>Expedited freight % vs CO₂ per pair</h3>
+              <p class="chart-takeaway" id="takeawayDual">Rising expedited freight is improving OTIF, but worsening cost and emissions — rebalance service policy by margin band.</p>
+              <div class="chart-wrap"><canvas id="chartDual" aria-label="Dual axis chart"></canvas></div>
+            </div>
+            <div class="chart-card">
+              <h3>Bio-circular material mix</h3>
+              <p class="chart-takeaway" id="takeawayDonut">Bio-based and recycled share still room to grow vs public targets — segment by franchise for credible reporting.</p>
+              <div class="chart-wrap short"><canvas id="chartDonut" aria-label="Material mix chart"></canvas></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Risk table -->
+        <div class="section-block" id="sec-risk">
+          <h2 class="section-title">Top risk areas — action queue</h2>
+          <div class="table-wrap">
+            <table class="risk" id="riskTable">
+              <thead>
+                <tr>
+                  <th>Region</th>
+                  <th>Category</th>
+                  <th>Metric</th>
+                  <th>Current</th>
+                  <th>Trend</th>
+                  <th>Recommended action</th>
+                  <th>Priority</th>
+                </tr>
+              </thead>
+              <tbody id="riskBody">
+                <tr><td>North America</td><td>HeyDude</td><td>Cost-to-serve</td><td>$9.82 / pair</td><td>↑ vs plan</td><td>Renegotiate parcel rates; tighten free-shipping threshold on low-AOV orders.</td><td><span class="badge badge-p1">P1</span></td></tr>
+                <tr><td>EMEA</td><td>Wholesale</td><td>Inventory aging</td><td>&gt;120 days: 14% of stock</td><td>Worsening</td><td>Push promotional bundles with key accounts; pause inbound on two seasonal codes.</td><td><span class="badge badge-p1">P1</span></td></tr>
+                <tr><td>APAC</td><td>Sandals</td><td>Stockout risk</td><td>Index 61</td><td>↑</td><td>Accelerate inbound from Vietnam; protect air for hero SKUs only.</td><td><span class="badge badge-p2">P2</span></td></tr>
+                <tr><td>North America</td><td>Classic Clog</td><td>Expedited freight</td><td>9.1% of volume</td><td>↑ YoY</td><td>Shift to ocean on non-hot sizes; align with marketing calendar.</td><td><span class="badge badge-p2">P2</span></td></tr>
+                <tr><td>EMEA</td><td>Jibbitz</td><td>Fill rate</td><td>91.2%</td><td>↓</td><td>Increase safety stock at regional DC; review MOQ with supplier S4.</td><td><span class="badge badge-p3">P3</span></td></tr>
+                <tr><td>APAC</td><td>Kids</td><td>Lead time variance</td><td>σ = 6.2 days</td><td>Stable</td><td>Maintain dual lanes for Q3 back-to-school.</td><td><span class="badge badge-p3">P3</span></td></tr>
+                <tr><td>North America</td><td>DTC</td><td>Returns rate</td><td>11.4%</td><td>↑</td><td>Size-guide A/B and packaging trial on HeyDude.</td><td><span class="badge badge-p2">P2</span></td></tr>
+                <tr><td>EMEA</td><td>HeyDude</td><td>CO₂ / pair</td><td>2.48 kg</td><td>↑</td><td>Route optimization + greener last-mile pilot in UK/DE.</td><td><span class="badge badge-p2">P2</span></td></tr>
+                <tr><td>APAC</td><td>Classic Clog</td><td>Supplier OTIF</td><td>93.0%</td><td>↑</td><td>Extend scorecard incentives; no action required short-term.</td><td><span class="badge badge-p3">P3</span></td></tr>
+                <tr><td>Global</td><td>All</td><td>Duty exposure</td><td>$4.1M rolling</td><td>Flat</td><td>Monitor tariff scenarios; scenario-plan for alternate routing.</td><td><span class="badge badge-p3">P3</span></td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <p class="footer-note">
+      Mock data for demonstration. <!-- Connectors: ERP (SAP) cost & inventory · OMS (order OTIF) · WMS (fill, expedite) · supplier portal (lead time) · sustainability ledger (CO₂, materials) -->
+      Production deployment would stream aggregates from ERP / OMS / WMS / supplier systems and sustainability data marts (see HTML source comments).
+    </p>
+  </div>
+    </div>
+  </div>
+
+  <script>
+  (function () {
+    var sidebar = document.getElementById("navSidebar");
+    var backdrop = document.getElementById("navBackdrop");
+    var burger = document.getElementById("navHamburger");
+    var links = document.querySelectorAll(".nav-rail-link");
+    var ids = ["sec-kpis", "sec-alerts", "sec-a", "sec-b", "sec-c", "sec-d", "sec-e", "sec-risk"];
+
+    function closeMobile() {
+      if (sidebar) sidebar.classList.remove("open");
+      if (backdrop) {
+        backdrop.classList.remove("visible");
+        backdrop.setAttribute("aria-hidden", "true");
+      }
+      if (burger) burger.setAttribute("aria-expanded", "false");
+    }
+    function openMobile() {
+      if (sidebar) sidebar.classList.add("open");
+      if (backdrop) {
+        backdrop.classList.add("visible");
+        backdrop.setAttribute("aria-hidden", "false");
+      }
+      if (burger) burger.setAttribute("aria-expanded", "true");
+    }
+    if (burger && sidebar) {
+      burger.addEventListener("click", function () {
+        if (sidebar.classList.contains("open")) closeMobile();
+        else openMobile();
+      });
+    }
+    if (backdrop) backdrop.addEventListener("click", closeMobile);
+
+    links.forEach(function (a) {
+      a.addEventListener("click", function () {
+        closeMobile();
+      });
+    });
+
+    function updateActiveNav() {
+      var headerOff = 110;
+      var active = ids[0];
+      for (var i = 0; i < ids.length; i++) {
+        var el = document.getElementById(ids[i]);
+        if (el && el.getBoundingClientRect().top <= headerOff) active = ids[i];
+      }
+      links.forEach(function (l) {
+        l.classList.toggle("active", l.getAttribute("data-nav-target") === active);
+      });
+    }
+    function onResize() {
+      if (window.innerWidth > 767) closeMobile();
+      updateActiveNav();
+    }
+    window.addEventListener("scroll", updateActiveNav, { passive: true });
+    window.addEventListener("resize", onResize, { passive: true });
+    window.addEventListener("hashchange", updateActiveNav);
+    document.addEventListener("keydown", function (e) {
+      if (e.key === "Escape") closeMobile();
+    });
+    if (document.readyState === "loading") {
+      document.addEventListener("DOMContentLoaded", updateActiveNav);
+    } else {
+      updateActiveNav();
+    }
+  })();
+  </script>
+
+  <script src="assets/chart.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js" crossorigin="anonymous"></script>
+  <script>
+(function () {
+  var CHART_LOCAL = "assets/chart.umd.min.js";
+  var CHART_CDN = "https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js";
+
+  function loadScript(src, onload, onerror) {
+    var s = document.createElement("script");
+    s.src = src;
+    s.async = false;
+    s.onload = onload;
+    s.onerror = onerror;
+    document.head.appendChild(s);
+  }
+
+  function startApp() {
+  /*
+   * Data layer (mock): replace MOCK / DATA with API responses from:
+   * - ERP: cost-to-serve components, inventory, financial actuals
+   * - OMS: OTIF, perfect order, expedite %, channel-level fills
+   * - WMS: fill rate, stockout risk, weeks of supply, aging
+   * - Supplier portal / PLM: lead times by factory & country
+   * - Sustainability / LCA: CO₂, material mix (bio-circular %)
+   */
+  var theme = document.body.getAttribute("data-theme") || "light";
+
+  var MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+  var REGIONS = ["North America", "EMEA", "APAC"];
+
+  var DATA = {
+    /* OTIF series aligned with static HTML table above */
+    otif: [91.6, 92.1, 92.4, 92.8, 93.0, 93.4, 93.7, 94.0, 94.2, 94.5, 94.8, 95.2],
+    fillByRegionChannel: {
+      na: { dtc: 96.2, wh: 93.1 },
+      emea: { dtc: 94.0, wh: 91.5 },
+      apac: { dtc: 95.1, wh: 92.8 }
+    },
+    /* KPI display strings — production: computed from same grain as charts */
+    kpi: {
+      otif: { v: 94.2, valueStr: "94.2%", deltaStr: "+1.1 pts vs LY", deltaClass: "up" },
+      perfect: { v: 91.8, valueStr: "91.8%", deltaStr: "+0.6 pts vs LY", deltaClass: "up" },
+      cts: { v: 8.45, valueStr: "$8.45", deltaStr: "−$0.32 vs LY", deltaClass: "up" },
+      turns: { v: 5.2, valueStr: "5.2×", deltaStr: "+0.2× vs LY", deltaClass: "up" },
+      ctd: { v: 118, valueStr: "118 d", deltaStr: "−4 d vs LY", deltaClass: "up" },
+      co2: { v: 2.31, valueStr: "2.31 kg", deltaStr: "+0.08 kg vs LY", deltaClass: "down" }
+    },
+    waterfall: [
+      { label: "Manufacturing", val: 3.85 },
+      { label: "Inbound freight", val: 1.12 },
+      { label: "Warehousing", val: 0.88 },
+      { label: "Outbound freight", val: 1.45 },
+      { label: "Returns", val: 0.62 },
+      { label: "Duties", val: 0.53 }
+    ],
+    ctsRegion: {
+      labels: ["N. America", "EMEA", "APAC"],
+      dtc: [8.9, 9.4, 8.2],
+      wh: [7.6, 8.1, 7.9]
+    },
+    funnel: [
+      { stage: "Design / brief", days: 21 },
+      { stage: "Sourcing & PO", days: 35 },
+      { stage: "Production", days: 42 },
+      { stage: "Ocean / air transit", days: 14 },
+      { stage: "DC / allocation", days: 6 }
+    ],
+    leadByCountry: {
+      Vietnam: [42, 41, 40, 39, 38, 37, 36, 35, 34, 33, 32, 31],
+      China: [38, 38, 37, 37, 36, 36, 35, 35, 34, 34, 33, 33],
+      Indonesia: [45, 44, 44, 43, 43, 42, 42, 41, 40, 40, 39, 38],
+      Mexico: [28, 28, 29, 29, 30, 30, 29, 29, 28, 28, 27, 27],
+      India: [36, 35, 35, 34, 34, 33, 33, 32, 32, 31, 31, 30],
+      Bangladesh: [40, 39, 39, 38, 38, 37, 37, 36, 36, 35, 35, 34]
+    },
+    heatmap: [
+      [18, 32, 45],
+      [22, 28, 38],
+      [35, 42, 55],
+      [15, 25, 30],
+      [48, 52, 61]
+    ],
+    scatter: [
+      { x: 6.2, y: 0.82, label: "NA Classic" },
+      { x: 8.1, y: 0.71, label: "NA HeyDude" },
+      { x: 5.4, y: 0.88, label: "EMEA Clog" },
+      { x: 7.2, y: 0.65, label: "APAC Sandals" },
+      { x: 4.8, y: 0.91, label: "APAC Kids" },
+      { x: 9.0, y: 0.58, label: "EMEA HeyDude" }
+    ],
+    expediteVsCo2: {
+      expedite: [4.2, 4.8, 5.1, 5.9, 6.2, 6.8, 7.1, 7.5, 8.0, 8.4, 8.9, 9.2],
+      co2: [2.05, 2.08, 2.12, 2.18, 2.22, 2.28, 2.31, 2.35, 2.41, 2.44, 2.48, 2.52]
+    },
+    materials: [
+      { label: "Bio-based EVA", pct: 34 },
+      { label: "Recycled content", pct: 28 },
+      { label: "Conventional", pct: 31 },
+      { label: "Other circular", pct: 7 }
+    ]
+  };
+
+  var COLORS = {
+    green: "#84BD00",
+    blue: "#006DA4",
+    gray: "#9CA3AF",
+    dark: "#444444",
+    grid: "rgba(0,0,0,0.06)"
+  };
+
+  var HEAT_LABELS = ["Classic Clog", "Sandals", "Jibbitz", "Kids", "HeyDude"];
+  var RISK_META = [
+    { key: "na", html: "<tr><td>North America</td><td>HeyDude</td><td>Cost-to-serve</td><td>$9.82 / pair</td><td>↑ vs plan</td><td>Renegotiate parcel rates; tighten free-shipping threshold on low-AOV orders.</td><td><span class=\"badge badge-p1\">P1</span></td></tr>" },
+    { key: "emea", html: "<tr><td>EMEA</td><td>Wholesale</td><td>Inventory aging</td><td>&gt;120 days: 14% of stock</td><td>Worsening</td><td>Push promotional bundles with key accounts; pause inbound on two seasonal codes.</td><td><span class=\"badge badge-p1\">P1</span></td></tr>" },
+    { key: "apac", html: "<tr><td>APAC</td><td>Sandals</td><td>Stockout risk</td><td>Index 61</td><td>↑</td><td>Accelerate inbound from Vietnam; protect air for hero SKUs only.</td><td><span class=\"badge badge-p2\">P2</span></td></tr>" },
+    { key: "na", html: "<tr><td>North America</td><td>Classic Clog</td><td>Expedited freight</td><td>9.1% of volume</td><td>↑ YoY</td><td>Shift to ocean on non-hot sizes; align with marketing calendar.</td><td><span class=\"badge badge-p2\">P2</span></td></tr>" },
+    { key: "emea", html: "<tr><td>EMEA</td><td>Jibbitz</td><td>Fill rate</td><td>91.2%</td><td>↓</td><td>Increase safety stock at regional DC; review MOQ with supplier S4.</td><td><span class=\"badge badge-p3\">P3</span></td></tr>" },
+    { key: "apac", html: "<tr><td>APAC</td><td>Kids</td><td>Lead time variance</td><td>σ = 6.2 days</td><td>Stable</td><td>Maintain dual lanes for Q3 back-to-school.</td><td><span class=\"badge badge-p3\">P3</span></td></tr>" },
+    { key: "na", html: "<tr><td>North America</td><td>DTC</td><td>Returns rate</td><td>11.4%</td><td>↑</td><td>Size-guide A/B and packaging trial on HeyDude.</td><td><span class=\"badge badge-p2\">P2</span></td></tr>" },
+    { key: "emea", html: "<tr><td>EMEA</td><td>HeyDude</td><td>CO₂ / pair</td><td>2.48 kg</td><td>↑</td><td>Route optimization + greener last-mile pilot in UK/DE.</td><td><span class=\"badge badge-p2\">P2</span></td></tr>" },
+    { key: "apac", html: "<tr><td>APAC</td><td>Classic Clog</td><td>Supplier OTIF</td><td>93.0%</td><td>↑</td><td>Extend scorecard incentives; no action required short-term.</td><td><span class=\"badge badge-p3\">P3</span></td></tr>" },
+    { key: "all", html: "<tr><td>Global</td><td>All</td><td>Duty exposure</td><td>$4.1M rolling</td><td>Flat</td><td>Monitor tariff scenarios; scenario-plan for alternate routing.</td><td><span class=\"badge badge-p3\">P3</span></td></tr>" }
+  ];
+
+  function getFilters() {
+    return {
+      range: document.getElementById("rangeSel").value,
+      region: document.getElementById("regionSel").value,
+      channel: document.getElementById("channelSel").value
+    };
+  }
+
+  function filterHash(f) {
+    var s = f.range + "|" + f.region + "|" + f.channel;
+    var h = 0;
+    for (var i = 0; i < s.length; i++) h = ((h << 5) - h) + s.charCodeAt(i) | 0;
+    return Math.abs(h);
+  }
+
+  function buildView(f) {
+    var start = 0;
+    var len = 12;
+    if (f.range === "6m") { start = 6; len = 6; }
+    else if (f.range === "ytd") { start = 0; len = 3; }
+    var labels = MONTHS.slice(start, start + len);
+    var bump = f.region === "na" ? 0.35 : f.region === "emea" ? -0.55 : f.region === "apac" ? 0.2 : 0;
+    var otif = DATA.otif.slice(start, start + len).map(function (v) { return +(v + bump).toFixed(1); });
+    var keys = f.region === "all" ? ["na", "emea", "apac"] : [f.region];
+    var fillLabels = keys.map(function (k) { return k === "na" ? "North America" : k === "emea" ? "EMEA" : "APAC"; });
+    var fillDtc = keys.map(function (k) { return DATA.fillByRegionChannel[k].dtc; });
+    var fillWh = keys.map(function (k) { return DATA.fillByRegionChannel[k].wh; });
+    var cIdx = keys.map(function (k) { return k === "na" ? 0 : k === "emea" ? 1 : 2; });
+    var ctsLabels = cIdx.map(function (i) { return DATA.ctsRegion.labels[i]; });
+    var ctsDtc = cIdx.map(function (i) { return DATA.ctsRegion.dtc[i]; });
+    var ctsWh = cIdx.map(function (i) { return DATA.ctsRegion.wh[i]; });
+    var h = filterHash(f);
+    var wfScale = 1 + (h % 11 - 5) / 100;
+    var waterfall = DATA.waterfall.map(function (x) { return { label: x.label, val: +(x.val * wfScale).toFixed(2) }; });
+    var expedite = DATA.expediteVsCo2.expedite.slice(start, start + len);
+    var co2 = DATA.expediteVsCo2.co2.slice(start, start + len);
+    var colIdx = f.region === "all" ? [0, 1, 2] : [f.region === "na" ? 0 : f.region === "emea" ? 1 : 2];
+    var heatColNames = colIdx.map(function (i) { return ["North America", "EMEA", "APAC"][i]; });
+    var heatRows = DATA.heatmap.map(function (row) {
+      return colIdx.map(function (ci) { return row[ci]; });
+    });
+    var scatter = DATA.scatter.filter(function (p) {
+      if (f.region === "all") return true;
+      if (f.region === "na") return /^NA\b/i.test(p.label);
+      if (f.region === "emea") return /^EMEA\b/i.test(p.label);
+      return /^APAC\b/i.test(p.label);
+    });
+    var fillBarDatasets = [];
+    if (f.channel !== "wholesale") fillBarDatasets.push({ label: "DTC", data: fillDtc, backgroundColor: COLORS.green });
+    if (f.channel !== "dtc") fillBarDatasets.push({ label: "Wholesale", data: fillWh, backgroundColor: COLORS.blue });
+    if (!fillBarDatasets.length) fillBarDatasets.push({ label: "Wholesale", data: fillWh, backgroundColor: COLORS.blue });
+    var ctsBarDatasets = [];
+    if (f.channel !== "wholesale") ctsBarDatasets.push({ label: "DTC", data: ctsDtc, backgroundColor: COLORS.green });
+    if (f.channel !== "dtc") ctsBarDatasets.push({ label: "Wholesale", data: ctsWh, backgroundColor: COLORS.blue });
+    if (!ctsBarDatasets.length) ctsBarDatasets.push({ label: "Wholesale", data: ctsWh, backgroundColor: COLORS.blue });
+    var leadSets = [
+      { label: "Vietnam", data: DATA.leadByCountry.Vietnam.slice(start, start + len), borderColor: COLORS.green, backgroundColor: "transparent", borderWidth: 2, tension: 0.25, fill: false },
+      { label: "China", data: DATA.leadByCountry.China.slice(start, start + len), borderColor: COLORS.blue, backgroundColor: "transparent", borderWidth: 2, tension: 0.25, fill: false },
+      { label: "Mexico", data: DATA.leadByCountry.Mexico.slice(start, start + len), borderColor: "#62C4C3", backgroundColor: "transparent", borderWidth: 2, tension: 0.25, fill: false }
+    ];
+    return {
+      months: labels,
+      otif: otif,
+      fillLabels: fillLabels,
+      fillDtc: fillDtc,
+      fillWh: fillWh,
+      ctsLabels: ctsLabels,
+      ctsDtc: ctsDtc,
+      ctsWh: ctsWh,
+      waterfall: waterfall,
+      funnel: DATA.funnel,
+      leadSets: leadSets,
+      expedite: expedite,
+      co2: co2,
+      scatter: scatter.length ? scatter : [{ x: 6, y: 0.75, label: "No segment" }],
+      heatColNames: heatColNames,
+      heatRows: heatRows,
+      lastExpedite: expedite[expedite.length - 1],
+      lastCo2: co2[co2.length - 1],
+      fillBarDatasets: fillBarDatasets,
+      ctsBarDatasets: ctsBarDatasets
+    };
+  }
+
+  function heatClass(v) {
+    if (v < 30) return "hm-low";
+    if (v < 50) return "hm-mid";
+    return "hm-high";
+  }
+
+  function updateHeatmap(view) {
+    var thead = document.getElementById("heatmapHead");
+    var tbody = document.getElementById("heatmapBody");
+    if (!thead || !tbody) return;
+    var hr = "<tr><th></th>";
+    for (var c = 0; c < view.heatColNames.length; c++) hr += "<th>" + view.heatColNames[c] + "</th>";
+    hr += "</tr>";
+    thead.innerHTML = hr;
+    var html = "";
+    for (var r = 0; r < HEAT_LABELS.length; r++) {
+      html += "<tr><td class=\"row-label\">" + HEAT_LABELS[r] + "</td>";
+      for (var j = 0; j < view.heatRows[r].length; j++) {
+        var v = view.heatRows[r][j];
+        html += "<td class=\"" + heatClass(v) + " tabular\">" + v + "</td>";
+      }
+      html += "</tr>";
+    }
+    tbody.innerHTML = html;
+  }
+
+  function updateRiskRows(f) {
+    var tb = document.getElementById("riskBody");
+    if (!tb) return;
+    var rows = RISK_META.filter(function (r) {
+      return f.region === "all" || r.key === f.region || r.key === "all";
+    });
+    tb.innerHTML = rows.map(function (r) { return r.html; }).join("");
+  }
+
+  function updateFilterSummary(f, view) {
+    var el = document.getElementById("filterSummary");
+    if (!el) return;
+    var rn = { "12m": "Last 12 months", "6m": "Last 6 months", "ytd": "YTD (Jan–Mar demo)" };
+    var cn = { all: "All channels", dtc: "DTC only", wholesale: "Wholesale only" };
+    var reg = f.region === "all" ? "All regions" : (f.region === "na" ? "North America" : f.region === "emea" ? "EMEA" : "APAC");
+    el.innerHTML = "Filters: <strong>" + rn[f.range] + "</strong> · <strong>" + reg + "</strong> · <strong>" + cn[f.channel] + "</strong> — OTIF latest <strong>" + view.otif[view.otif.length - 1] + "%</strong>, expedite <strong>" + view.lastExpedite + "%</strong>, CO₂ <strong>" + view.lastCo2 + " kg</strong>.";
+  }
+
+  function updateKpis(view) {
+    var lastOtif = view.otif[view.otif.length - 1];
+    var sumWf = view.waterfall.reduce(function (s, x) { return s + x.val; }, 0);
+    var ctd = view.funnel.reduce(function (s, x) { return s + x.days; }, 0);
+    var perfect = Math.max(82, Math.min(98, +(lastOtif - 2.35).toFixed(1)));
+    function set(id, txt) { var n = document.getElementById(id); if (n) n.textContent = txt; }
+    set("kpi-otif", lastOtif.toFixed(1) + "%");
+    set("kpi-perfect", perfect.toFixed(1) + "%");
+    set("kpi-cts", "$" + sumWf.toFixed(2));
+    set("kpi-turns", (5.2 + (filterHash(getFilters()) % 5 - 2) / 10).toFixed(1) + "×");
+    set("kpi-ctd", ctd + " d");
+    set("kpi-co2", view.lastCo2.toFixed(2) + " kg");
+    set("kpi-otif-d", "Filtered slice vs baseline");
+    set("kpi-perfect-d", "Derived from OTIF curve");
+    set("kpi-cts-d", sumWf < 8.55 ? "Cost stack favorable" : "CTS pressure");
+    set("kpi-turns-d", "Mock sensitivity");
+    set("kpi-ctd-d", "Unchanged stages");
+    set("kpi-co2-d", "End of range CO₂");
+  }
+
+  function setChartLibraryState(ok) {
+    document.querySelectorAll(".chart-wrap").forEach(function (wrap) {
+      var fail = wrap.querySelector(".chart-fail");
+      if (!fail) {
+        fail = document.createElement("div");
+        fail.className = "chart-fail";
+        fail.setAttribute("role", "alert");
+        fail.innerHTML = "Chart.js did not load. Use this file with the <strong>assets</strong> folder, <strong>or</strong> allow the CDN script (Chart.js) in your network / preview.";
+        wrap.appendChild(fail);
+      }
+      if (ok) {
+        wrap.classList.remove("chart-library-missing");
+        fail.setAttribute("hidden", "");
+      } else {
+        wrap.classList.add("chart-library-missing");
+        fail.removeAttribute("hidden");
+      }
+    });
+  }
+
+  function setChartRenderError(msg) {
+    var b = document.getElementById("chartErrorBanner");
+    if (!b) return;
+    if (msg) {
+      b.textContent = msg;
+      b.removeAttribute("hidden");
+    } else {
+      b.setAttribute("hidden", "");
+      b.textContent = "";
+    }
+  }
+
+  function chartCanvas(id) {
+    var el = document.getElementById(id);
+    if (!el || el.tagName !== "CANVAS") {
+      throw new Error("Missing canvas #" + id);
+    }
+    return el;
+  }
+
+  function refreshDashboard() {
+    var f = getFilters();
+    var view = buildView(f);
+    updateFilterSummary(f, view);
+    updateHeatmap(view);
+    updateRiskRows(f);
+    updateKpis(view);
+    if (typeof Chart !== "undefined") {
+      try {
+        setChartRenderError("");
+        renderAllCharts(view);
+        setChartLibraryState(true);
+      } catch (e) {
+        console.warn("Charts:", e);
+        setChartRenderError("Charts failed to draw: " + (e && e.message ? e.message : String(e)) + " — see browser console (F12).");
+        setChartLibraryState(true);
+      }
+    } else {
+      setChartRenderError("");
+      setChartLibraryState(false);
+    }
+  }
+
+  function applyTheme(next) {
+    theme = next;
+    document.body.setAttribute("data-theme", theme);
+    document.documentElement.setAttribute("data-theme", theme);
+    document.documentElement.style.colorScheme = theme === "dark" ? "dark" : "light";
+    try {
+      localStorage.setItem("crocs-control-tower-theme", theme);
+    } catch (e) {}
+  }
+
+  function chartDefaults() {
+    var dk = document.body.getAttribute("data-theme") === "dark";
+    Chart.defaults.font.family = "'Inter', system-ui, sans-serif";
+    Chart.defaults.color = dk ? "rgba(255,255,255,0.92)" : "#142018";
+    Chart.defaults.borderColor = dk ? "rgba(255,255,255,0.14)" : "rgba(0,0,0,0.12)";
+    try {
+      Chart.defaults.animation.duration = 450;
+      Chart.defaults.animation.easing = "easeOutQuart";
+    } catch (e1) {}
+    Chart.defaults.elements.line.borderWidth = 2;
+    Chart.defaults.elements.line.tension = 0.25;
+    Chart.defaults.elements.point.radius = 0;
+    Chart.defaults.elements.point.hoverRadius = 7;
+    Chart.defaults.elements.point.hitRadius = 16;
+    Chart.defaults.elements.point.hoverBorderWidth = 2;
+    Chart.defaults.elements.bar.borderWidth = 0;
+  }
+
+  /** Rakuten_v2-style dashed grid + Crocs glass tooltip */
+  function rakutenGrid(isDark) {
+    return {
+      color: isDark ? "rgba(255,255,255,0.16)" : "rgba(0,0,0,0.07)",
+      borderDash: [3, 3],
+      drawBorder: false
+    };
+  }
+
+  function crocsTooltip(isDark) {
+    return {
+      enabled: true,
+      backgroundColor: isDark ? "rgba(6, 52, 68, 0.94)" : "rgba(255, 255, 255, 0.97)",
+      titleColor: isDark ? "#ffffff" : "#142018",
+      bodyColor: isDark ? "rgba(255,255,255,0.9)" : "#334155",
+      footerColor: isDark ? "rgba(255,255,255,0.65)" : "#64748b",
+      borderColor: isDark ? "rgba(132, 189, 0, 0.55)" : "rgba(0, 109, 164, 0.4)",
+      borderWidth: 1,
+      padding: 12,
+      cornerRadius: 8,
+      displayColors: true,
+      boxPadding: 6,
+      boxWidth: 10,
+      boxHeight: 10,
+      usePointStyle: true,
+      titleFont: { size: 12, weight: "600" },
+      bodyFont: { size: 12 },
+      titleMarginBottom: 6,
+      bodySpacing: 5,
+      caretPadding: 10,
+      multiKeyBackground: "transparent"
+    };
+  }
+
+  function legendBottom(isDark) {
+    return {
+      position: "bottom",
+      labels: {
+        usePointStyle: true,
+        pointStyle: "circle",
+        padding: 18,
+        color: isDark ? "rgba(255,255,255,0.92)" : "#142018",
+        font: { size: 11, weight: "500" }
+      }
+    };
+  }
+
+  var charts = [];
+
+  function destroyCharts() {
+    charts.forEach(function (c) { try { c.destroy(); } catch (e) {} });
+    charts = [];
+  }
+
+  function renderAllCharts(view) {
+    if (typeof Chart === "undefined" || !view) {
+      return;
+    }
+    destroyCharts();
+    chartDefaults();
+    var grid = rakutenGrid(document.body.getAttribute("data-theme") === "dark");
+    var isDark = document.body.getAttribute("data-theme") === "dark";
+    var tt = crocsTooltip(isDark);
+    var ptBorder = isDark ? "rgba(255,255,255,0.55)" : COLORS.dark;
+    var otMin = Math.min.apply(null, view.otif);
+    var otMax = Math.max.apply(null, view.otif);
+    var yPad = 1.2;
+    var wfColors = ["#003d5c", "#006DA4", "#1a8a9e", "#2d9440", COLORS.green, "#b8e050"];
+
+    charts.push(new Chart(chartCanvas("chartOtif"), {
+      type: "line",
+      data: {
+        labels: view.months,
+        datasets: [{
+          label: "OTIF %",
+          data: view.otif,
+          borderColor: COLORS.green,
+          backgroundColor: isDark ? "rgba(132, 189, 0, 0.2)" : "rgba(132, 189, 0, 0.28)",
+          fill: true,
+          tension: 0.3,
+          borderWidth: 2.5,
+          pointBackgroundColor: COLORS.green,
+          pointBorderColor: "#ffffff",
+          pointBorderWidth: 1,
+          pointHoverBackgroundColor: "#9fe020",
+          pointHoverBorderColor: "#ffffff"
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        interaction: { mode: "index", intersect: false },
+        plugins: {
+          legend: { display: false },
+          tooltip: Object.assign({}, tt, {
+            callbacks: {
+              label: function (ctx) {
+                var v = ctx.parsed.y;
+                return (ctx.dataset.label || "OTIF") + ": " + (v != null ? v.toFixed(1) + "%" : "");
+              }
+            }
+          })
+        },
+        scales: {
+          y: {
+            min: Math.floor(otMin - yPad),
+            max: Math.ceil(otMax + yPad),
+            ticks: { font: { size: 11 } },
+            title: { display: true, text: "OTIF %", color: isDark ? "rgba(255,255,255,0.65)" : "#64748b", font: { size: 11 } },
+            grid: grid
+          },
+          x: {
+            ticks: { maxRotation: 0, font: { size: 11 } },
+            grid: Object.assign({}, grid, { display: true })
+          }
+        }
+      }
+    }));
+
+    charts.push(new Chart(chartCanvas("chartFill"), {
+      type: "bar",
+      data: {
+        labels: view.fillLabels,
+        datasets: view.fillBarDatasets.map(function (ds) {
+          return Object.assign({}, ds, { borderRadius: 8, maxBarThickness: 46 });
+        })
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        interaction: { mode: "index", intersect: false },
+        plugins: {
+          legend: legendBottom(isDark),
+          tooltip: Object.assign({}, tt, {
+            callbacks: {
+              label: function (ctx) {
+                var v = ctx.parsed.y;
+                return (ctx.dataset.label || "") + ": " + (v != null ? v.toFixed(1) + "%" : "");
+              }
+            }
+          })
+        },
+        scales: {
+          x: { stacked: false, ticks: { font: { size: 11 } }, grid: Object.assign({}, grid, { display: false }) },
+          y: { stacked: false, max: 100, beginAtZero: true, ticks: { font: { size: 11 } }, grid: grid, title: { display: true, text: "Fill %", color: isDark ? "rgba(255,255,255,0.65)" : "#64748b", font: { size: 11 } } }
+        }
+      }
+    }));
+
+    var wf = view.waterfall;
+    charts.push(new Chart(chartCanvas("chartWaterfall"), {
+      type: "bar",
+      data: {
+        labels: wf.map(function (x) { return x.label; }),
+        datasets: [{
+          data: wf.map(function (x) { return x.val; }),
+          backgroundColor: wf.map(function (_, i) { return wfColors[i % wfColors.length]; }),
+          borderRadius: 8,
+          maxBarThickness: 52
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        interaction: { mode: "index", intersect: false },
+        plugins: {
+          legend: { display: false },
+          tooltip: Object.assign({}, tt, {
+            callbacks: {
+              label: function (ctx) {
+                var v = ctx.parsed.y;
+                return (ctx.label || "") + ": $" + (v != null ? v.toFixed(2) : "") + " / pair";
+              }
+            }
+          })
+        },
+        scales: {
+          y: { beginAtZero: true, ticks: { font: { size: 11 } }, grid: grid, title: { display: true, text: "$ / pair", color: isDark ? "rgba(255,255,255,0.65)" : "#64748b", font: { size: 11 } } },
+          x: { ticks: { font: { size: 10 } }, grid: Object.assign({}, grid, { display: false }) }
+        }
+      }
+    }));
+
+    charts.push(new Chart(chartCanvas("chartCtsRegion"), {
+      type: "bar",
+      data: {
+        labels: view.ctsLabels,
+        datasets: view.ctsBarDatasets.map(function (ds) {
+          return Object.assign({}, ds, { borderRadius: 8, maxBarThickness: 46 });
+        })
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        interaction: { mode: "index", intersect: false },
+        plugins: {
+          legend: legendBottom(isDark),
+          tooltip: Object.assign({}, tt, {
+            callbacks: {
+              label: function (ctx) {
+                var v = ctx.parsed.y;
+                return (ctx.dataset.label || "") + ": $" + (v != null ? v.toFixed(2) : "");
+              }
+            }
+          })
+        },
+        scales: {
+          x: { stacked: false, ticks: { font: { size: 11 } }, grid: Object.assign({}, grid, { display: false }) },
+          y: { stacked: false, beginAtZero: true, ticks: { font: { size: 11 } }, grid: grid }
+        }
+      }
+    }));
+
+    var funnelColors = ["#006DA4", "#0a7aa8", "#19875f", "#2d9440", COLORS.green];
+    charts.push(new Chart(chartCanvas("chartFunnel"), {
+      type: "bar",
+      data: {
+        labels: view.funnel.map(function (x) { return x.stage; }),
+        datasets: [{
+          data: view.funnel.map(function (x) { return x.days; }),
+          backgroundColor: view.funnel.map(function (_, i) { return funnelColors[i % funnelColors.length]; }),
+          borderRadius: 8,
+          maxBarThickness: 22
+        }]
+      },
+      options: {
+        indexAxis: "y",
+        responsive: true,
+        maintainAspectRatio: false,
+        interaction: { mode: "index", intersect: false },
+        plugins: {
+          legend: { display: false },
+          tooltip: Object.assign({}, tt, {
+            callbacks: {
+              label: function (ctx) {
+                var lbl = ctx.chart && ctx.chart.data && ctx.chart.data.labels ? ctx.chart.data.labels[ctx.dataIndex] : "";
+                var v = ctx.parsed && ctx.parsed.x;
+                return (lbl || ctx.label || "") + ": " + (v != null ? v + " days" : "");
+              }
+            }
+          })
+        },
+        scales: {
+          x: { beginAtZero: true, ticks: { font: { size: 11 } }, grid: grid, title: { display: true, text: "Days", color: isDark ? "rgba(255,255,255,0.65)" : "#64748b", font: { size: 11 } } },
+          y: { ticks: { font: { size: 10 } }, grid: Object.assign({}, grid, { display: false }) }
+        }
+      }
+    }));
+
+    charts.push(new Chart(chartCanvas("chartLead"), {
+      type: "line",
+      data: { labels: view.months, datasets: view.leadSets },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        interaction: { mode: "index", intersect: false },
+        plugins: {
+          legend: legendBottom(isDark),
+          tooltip: Object.assign({}, tt, {
+            callbacks: {
+              label: function (ctx) {
+                var v = ctx.parsed.y;
+                return (ctx.dataset.label || "") + ": " + (v != null ? v + " d" : "");
+              }
+            }
+          })
+        },
+        scales: {
+          y: { ticks: { font: { size: 11 } }, grid: grid, title: { display: true, text: "Lead time (days)", color: isDark ? "rgba(255,255,255,0.65)" : "#64748b", font: { size: 11 } } },
+          x: { ticks: { maxRotation: 0, font: { size: 11 } }, grid: Object.assign({}, grid, { display: true }) }
+        }
+      }
+    }));
+
+    charts.push(new Chart(chartCanvas("chartScatter"), {
+      type: "scatter",
+      data: {
+        datasets: [{
+          label: "Segments",
+          data: view.scatter.map(function (p) { return { x: p.x, y: p.y }; }),
+          backgroundColor: COLORS.green,
+          borderColor: ptBorder,
+          borderWidth: 1,
+          pointRadius: 8,
+          pointHoverRadius: 11,
+          pointHitRadius: 22
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        interaction: { mode: "nearest", intersect: true },
+        plugins: {
+          legend: { display: false },
+          tooltip: Object.assign({}, tt, {
+            callbacks: {
+              label: function (ctx) {
+                var i = ctx.dataIndex;
+                var p = view.scatter[i];
+                if (!p) return "";
+                return p.label + " — WOS " + p.x + ", sell-through " + p.y;
+              }
+            }
+          })
+        },
+        scales: {
+          x: { title: { display: true, text: "Weeks of supply", color: isDark ? "rgba(255,255,255,0.7)" : "#475569" }, ticks: { font: { size: 11 } }, grid: grid },
+          y: { min: 0.5, max: 1, title: { display: true, text: "Sell-through rate", color: isDark ? "rgba(255,255,255,0.7)" : "#475569" }, ticks: { font: { size: 11 } }, grid: grid }
+        }
+      }
+    }));
+
+    charts.push(new Chart(chartCanvas("chartDual"), {
+      type: "line",
+      data: {
+        labels: view.months,
+        datasets: [
+          { label: "Expedited freight %", data: view.expedite, yAxisID: "y", borderColor: COLORS.blue, backgroundColor: "transparent", tension: 0.3, pointBackgroundColor: COLORS.blue, pointBorderColor: "#fff", pointBorderWidth: 1, pointHoverBackgroundColor: "#2bb0e6" },
+          { label: "CO₂ / pair (kg)", data: view.co2, yAxisID: "y1", borderColor: COLORS.green, backgroundColor: "transparent", tension: 0.3, pointBackgroundColor: COLORS.green, pointBorderColor: "#fff", pointBorderWidth: 1, pointHoverBackgroundColor: "#9fe020" }
+        ]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        interaction: { mode: "index", intersect: false },
+        plugins: {
+          legend: legendBottom(isDark),
+          tooltip: Object.assign({}, tt, {
+            callbacks: {
+              label: function (ctx) {
+                var v = ctx.parsed.y;
+                if (ctx.datasetIndex === 0) return "Expedited: " + (v != null ? v.toFixed(1) + "%" : "");
+                return "CO₂: " + (v != null ? v.toFixed(2) + " kg" : "");
+              }
+            }
+          })
+        },
+        scales: {
+          y: { type: "linear", position: "left", ticks: { font: { size: 11 } }, grid: grid, title: { display: true, text: "Expedite %", color: isDark ? "rgba(255,255,255,0.65)" : "#64748b", font: { size: 11 } } },
+          y1: { type: "linear", position: "right", ticks: { font: { size: 11 } }, grid: { drawOnChartArea: false }, title: { display: true, text: "kg CO₂", color: isDark ? "rgba(255,255,255,0.65)" : "#64748b", font: { size: 11 } } },
+          x: { ticks: { maxRotation: 0, font: { size: 11 } }, grid: Object.assign({}, grid, { display: true }) }
+        }
+      }
+    }));
+
+    charts.push(new Chart(chartCanvas("chartDonut"), {
+      type: "doughnut",
+      data: {
+        labels: DATA.materials.map(function (m) { return m.label; }),
+        datasets: [{
+          data: DATA.materials.map(function (m) { return m.pct; }),
+          backgroundColor: [COLORS.green, COLORS.blue, "#62C4C3", "#6B7280"],
+          borderWidth: 2,
+          borderColor: isDark ? "rgba(8, 40, 50, 0.95)" : "#fff",
+          hoverBorderColor: isDark ? "rgba(132, 189, 0, 0.8)" : COLORS.blue,
+          hoverOffset: 10
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        cutout: "58%",
+        plugins: {
+          legend: {
+            position: "right",
+            labels: {
+              usePointStyle: true,
+              pointStyle: "circle",
+              padding: 10,
+              color: isDark ? "rgba(255,255,255,0.92)" : "#142018",
+              font: { size: 11, weight: "500" }
+            }
+          },
+          tooltip: Object.assign({}, tt, {
+            callbacks: {
+              label: function (ctx) {
+                var v = ctx.raw;
+                return (ctx.label || "") + ": " + (v != null ? v + "%" : "");
+              }
+            }
+          })
+        }
+      }
+    }));
+
+    requestAnimationFrame(function () {
+      charts.forEach(function (c) {
+        try { c.resize(); } catch (e) {}
+      });
+    });
+  }
+
+  function init() {
+    var themeBtn = document.getElementById("themeBtn");
+    themeBtn.textContent = theme === "light" ? "Dark mode" : "Light mode";
+
+    try {
+      refreshDashboard();
+    } catch (err) {
+      console.warn("Dashboard render:", err);
+    }
+
+    themeBtn.addEventListener("click", function () {
+      applyTheme(theme === "light" ? "dark" : "light");
+      themeBtn.textContent = theme === "light" ? "Dark mode" : "Light mode";
+      refreshDashboard();
+    });
+
+    ["rangeSel", "regionSel", "channelSel"].forEach(function (id) {
+      document.getElementById(id).addEventListener("change", function () {
+        refreshDashboard();
+      });
+    });
+  }
+
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", init);
+  else init();
+  }
+
+  function boot() {
+    if (typeof Chart !== "undefined") {
+      startApp();
+      return;
+    }
+    loadScript(CHART_LOCAL, startApp, function () {
+      loadScript(CHART_CDN, startApp, function () {
+        console.warn("Chart.js could not be loaded; charts are hidden but tables still show mock data.");
+        startApp();
+      });
+    });
+  }
+
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", boot);
+  else boot();
+})();
+  </script>
+</body>
+</html>
